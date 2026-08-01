@@ -50,9 +50,9 @@ final class RoundCrowd(
   def emitAllOnline(): Unit =
     val outputs = for
       (id, round) <- rounds.underlying.asScala
-      if round.players.exists(_ > 0)
-    yield OutputForLila(id, round.players.map(_ > 0))
-    logger.info(s"Emitting rounds with online players: ${outputs.size}")
+      if !round.isEmpty
+    yield OutputForLila(id, round.players.map(_ > 0), round.room.nbMembers > 0)
+    logger.info(s"Emitting rounds with online players or spectators: ${outputs.size}")
     outputs
       .grouped(1024)
       .foreach: batch =>
@@ -76,10 +76,10 @@ final class RoundCrowd(
 object RoundCrowd:
 
   case class Output(room: RoomCrowd.Output, players: ByColor[Int]):
-    def forLila = OutputForLila(room.roomId, players.map(_ > 0))
+    def forLila = OutputForLila(room.roomId, players.map(_ > 0), room.members > 0)
 
-  case class OutputForLila(roomId: RoomId, players: ByColor[Boolean]):
-    def isEmpty = !players.white && !players.black
+  case class OutputForLila(roomId: RoomId, players: ByColor[Boolean], hasWatchers: Boolean):
+    def isEmpty = !hasWatchers && !players.white && !players.black
 
   def outputOf(roomId: RoomId, round: RoundState) = Output(
     room = RoomCrowd.outputOf(roomId, round.room),
